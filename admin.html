@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PEROT MOTOR | Dashboard Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .sidebar-link.active {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+        }
+        .status-badge {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .status-badge.selesai { background: #dcfce7; color: #166534; }
+        .status-badge.proses { background: #fef3c7; color: #92400e; }
+        .status-badge.menunggu { background: #dbeafe; color: #1e40af; }
+        .status-badge.batal { background: #fce4ec; color: #b71c1c; }
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-left: 0; }
+        }
+        .toast { animation: slideIn 0.3s ease-out, fadeOut 0.3s 2.7s ease-in forwards; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { to { opacity: 0; transform: translateX(100%); } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-[100] flex flex-col gap-2"></div>
+
+    <!-- Mobile menu button -->
+    <button id="mobileMenuBtn" class="fixed top-4 left-4 z-50 lg:hidden bg-slate-900 text-white p-3 rounded-xl shadow-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+
+    <!-- Sidebar -->
+    <aside class="sidebar fixed top-0 left-0 h-full w-64 bg-slate-900 text-white flex flex-col z-40 transition-transform duration-300">
+        <div class="p-6 border-b border-slate-800">
+            <div class="text-xl font-extrabold tracking-wider text-blue-400">
+                PEROT_<span class="text-white">MOTOR</span>
+            </div>
+            <div class="text-xs text-slate-400 mt-0.5">Dashboard Admin</div>
+        </div>
+
+        <nav class="p-4 flex flex-col gap-1 flex-1">
+            <a href="#" class="sidebar-link active flex items-center gap-3 px-4 py-3 rounded-xl transition" data-tab="booking">
+                <span class="text-lg">📋</span>
+                <span class="font-medium">Booking</span>
+            </a>
+            <a href="#" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition" data-tab="sparepart">
+                <span class="text-lg">🔧</span>
+                <span class="font-medium">Sparepart</span>
+            </a>
+            <div class="mt-auto pt-4 border-t border-slate-800 space-y-1">
+                <div id="admin-user" class="px-4 py-2 text-xs text-slate-400 truncate hidden"></div>
+                <button id="logout-btn" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition text-sm hidden">
+                    <span>🚪</span> Logout
+                </button>
+                <a href="index.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition text-sm">
+                    <span>←</span> Kembali ke Website
+                </a>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- Login Screen (Firebase Auth) -->
+    <div id="login-screen" class="fixed inset-0 z-[60] bg-slate-900 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm">
+            <div class="text-center mb-6">
+                <div class="text-2xl font-extrabold tracking-wider text-blue-600">PEROT_<span class="text-slate-900">MOTOR</span></div>
+                <p class="text-sm text-slate-500 mt-1">Login Admin</p>
+            </div>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="text-sm font-medium text-slate-600">Email</label>
+                    <input type="email" id="login-email" required placeholder="admin@perotmotor.com" class="w-full mt-1 px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm">
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-slate-600">Password</label>
+                    <input type="password" id="login-password" required placeholder="••••••••" class="w-full mt-1 px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm">
+                </div>
+                <p id="login-error" class="text-sm text-red-500 hidden"></p>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition shadow-lg shadow-blue-600/20">Masuk</button>
+            </form>
+            <p class="text-xs text-slate-400 mt-4 text-center">Mode lokal? Login tidak diperlukan.</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content ml-64 p-6 lg:p-8 transition-all duration-300">
+
+        <!-- Top bar -->
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900">Dashboard</h1>
+                <p class="text-sm text-slate-500 mt-1">Kelola data booking & inventaris bengkel <span id="db-mode" class="ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">...</span></p>
+            </div>
+            <div class="text-sm text-slate-400">
+                <span id="current-datetime"></span>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-slate-500 font-medium">Total Booking</p>
+                        <h3 class="text-3xl font-bold mt-1 text-slate-900" id="total-bookings">0</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-2xl">📋</div>
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-slate-500 font-medium">Total Sparepart</p>
+                        <h3 class="text-3xl font-bold mt-1 text-slate-900" id="total-spareparts">0</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center text-2xl">🔧</div>
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-slate-500 font-medium">Nilai Inventaris</p>
+                        <h3 class="text-3xl font-bold mt-1 text-slate-900" id="total-value">Rp 0</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-2xl">💰</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Booking Section -->
+        <section id="section-booking" class="section-tab">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">📋 Daftar Booking</h2>
+                        <p class="text-sm text-slate-500 mt-0.5">Monitor permintaan servis pelanggan</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="bookingFilter" class="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+                            <option value="all">Semua Status</option>
+                            <option value="selesai">Selesai</option>
+                            <option value="proses">Proses</option>
+                            <option value="menunggu">Menunggu</option>
+                        </select>
+                        <button onclick="addSampleBookings()" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium px-4 py-2 rounded-xl transition">+ Data Sample</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 text-left">
+                                <th class="p-4 font-semibold text-slate-600">Nama</th>
+                                <th class="p-4 font-semibold text-slate-600">WhatsApp</th>
+                                <th class="p-4 font-semibold text-slate-600">Kendaraan</th>
+                                <th class="p-4 font-semibold text-slate-600">Layanan</th>
+                                <th class="p-4 font-semibold text-slate-600">Tanggal</th>
+                                <th class="p-4 font-semibold text-slate-600">Status</th>
+                                <th class="p-4 font-semibold text-slate-600 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookingTable" class="divide-y divide-slate-100">
+                            <tr><td colspan="7" class="p-8 text-center text-slate-400">Belum ada data booking.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sparepart Section -->
+        <section id="section-sparepart" class="section-tab hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Table -->
+                <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100">
+                        <h2 class="text-lg font-bold text-slate-900">🔧 Inventaris Sparepart</h2>
+                        <p class="text-sm text-slate-500 mt-0.5">Kelola stok sparepart bengkel</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 text-left">
+                                    <th class="p-4 font-semibold text-slate-600">Nama</th>
+                                    <th class="p-4 font-semibold text-slate-600">Kategori</th>
+                                    <th class="p-4 font-semibold text-slate-600 text-center">Stok</th>
+                                    <th class="p-4 font-semibold text-slate-600 text-right">Harga</th>
+                                    <th class="p-4 font-semibold text-slate-600 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sparepartTable" class="divide-y divide-slate-100">
+                                <tr><td colspan="5" class="p-8 text-center text-slate-400">Belum ada sparepart.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Add Form -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="font-bold text-lg text-slate-900 mb-4">Tambah Sparepart</h3>
+                    <form id="sparepartForm" class="space-y-4">
+                        <div>
+                            <label class="text-sm font-medium text-slate-600">Nama Sparepart</label>
+                            <input type="text" id="sparepart_name" placeholder="Oli Mesin 10W-40" required class="w-full mt-1 px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-600">Kategori</label>
+                            <input type="text" id="sparepart_kategori" placeholder="Oli, Kampas Rem, Filter" required class="w-full mt-1 px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-600">Stok</label>
+                            <input type="number" id="sparepart_stok" placeholder="0" min="0" required class="w-full mt-1 px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-600">Harga (Rp)</label>
+                            <input type="number" id="sparepart_harga" placeholder="50000" min="0" required class="w-full mt-1 px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-600">Deskripsi</label>
+                            <textarea id="sparepart_deskripsi" placeholder="Deskripsi singkat..." rows="2" class="w-full mt-1 px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"></textarea>
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition shadow-lg shadow-blue-600/20">Simpan Sparepart</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Firebase (opsional: isi db.js untuk multi-device) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="db.js"></script>
+    <script>
+        // ======================== TOAST SYSTEM ========================
+        function showToast(message, type) {
+            const container = document.getElementById('toast-container');
+            const colors = { success: 'bg-emerald-600 border-emerald-500', warning: 'bg-amber-600 border-amber-500', error: 'bg-red-600 border-red-500', info: 'bg-blue-600 border-blue-500' };
+            const icons = { success: '✅', warning: '⚠️', error: '❌', info: 'ℹ️' };
+            const toast = document.createElement('div');
+            toast.className = 'toast flex items-center gap-3 ' + (colors[type] || colors.info) + ' border text-white px-5 py-3.5 rounded-xl shadow-xl min-w-[280px] max-w-sm';
+            toast.innerHTML = '<span>' + (icons[type] || icons.info) + '</span><span class="text-sm font-medium">' + message + '</span>';
+            container.appendChild(toast);
+            setTimeout(function() { toast.remove(); }, 3000);
+        }
+
+        // ======================== TAB SWITCHING ========================
+        document.querySelectorAll('.sidebar-link[data-tab]').forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                var tab = this.getAttribute('data-tab');
+                document.querySelectorAll('.sidebar-link').forEach(function(l) { l.classList.remove('active'); });
+                this.classList.add('active');
+                document.querySelectorAll('.section-tab').forEach(function(s) { s.classList.add('hidden'); });
+                document.getElementById('section-' + tab).classList.remove('hidden');
+            });
+        });
+
+        // ======================== MOBILE SIDEBAR ========================
+        document.getElementById('mobileMenuBtn').addEventListener('click', function() {
+            document.querySelector('.sidebar').classList.toggle('open');
+        });
+
+        // ======================== CLOCK ========================
+        function updateClock() {
+            var now = new Date();
+            var options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+            document.getElementById('current-datetime').textContent = now.toLocaleDateString('id-ID', options);
+        }
+        updateClock();
+        setInterval(updateClock, 60000);
+
+        // ======================== DATA CACHE ========================
+        var bookingsCache = [];
+        var sparepartsCache = [];
+
+        // ======================== BOOKING CRUD ========================
+        function renderBookings(filter) {
+            var bookings = bookingsCache;
+            var tbody = document.getElementById('bookingTable');
+            var totalEl = document.getElementById('total-bookings');
+
+            if (filter && filter !== 'all') {
+                bookings = bookings.filter(function(b) { return b.status && b.status.toLowerCase() === filter; });
+            }
+
+            totalEl.textContent = bookingsCache.length;
+
+            if (bookings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-400">Belum ada data booking.</td></tr>';
+                return;
+            }
+
+            var html = '';
+            bookings.forEach(function(b) {
+                var statusClass = 'menunggu';
+                if (b.status === 'Selesai') statusClass = 'selesai';
+                else if (b.status === 'Proses') statusClass = 'proses';
+                else if (b.status === 'Batal') statusClass = 'batal';
+
+                html += '<tr>';
+                html += '<td class="p-4 font-medium text-slate-800">' + escapeHtml(b.nama) + '</td>';
+                html += '<td class="p-4 text-slate-500">' + escapeHtml(b.wa) + '</td>';
+                html += '<td class="p-4 text-slate-500">' + escapeHtml(b.motor) + '</td>';
+                html += '<td class="p-4 text-slate-500">' + escapeHtml(b.layanan) + '</td>';
+                html += '<td class="p-4 text-slate-500 text-nowrap">' + escapeHtml(b.tanggal) + ' ' + escapeHtml(b.jam) + '</td>';
+                html += '<td class="p-4"><span class="status-badge ' + statusClass + '">' + escapeHtml(b.status || 'Menunggu') + '</span></td>';
+                html += '<td class="p-4 text-center">';
+                html += '<select onchange="updateBookingStatus(\'' + b.id + '\', this.value)" class="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white focus:outline-none">';
+                html += '<option value="Menunggu"' + (b.status === 'Menunggu' ? ' selected' : '') + '>Menunggu</option>';
+                html += '<option value="Proses"' + (b.status === 'Proses' ? ' selected' : '') + '>Proses</option>';
+                html += '<option value="Selesai"' + (b.status === 'Selesai' ? ' selected' : '') + '>Selesai</option>';
+                html += '<option value="Batal"' + (b.status === 'Batal' ? ' selected' : '') + '>Batal</option>';
+                html += '</select>';
+                html += '<button onclick="deleteBooking(\'' + b.id + '\')" class="ml-2 text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>';
+                html += '</td>';
+                html += '</tr>';
+            });
+            tbody.innerHTML = html;
+        }
+
+        async function updateBookingStatus(id, newStatus) {
+            await window.PEROT_DB.updateBookingStatus(id, newStatus);
+            showToast('Status booking #' + id + ' diubah ke "' + newStatus + '"', 'success');
+        }
+
+        async function deleteBooking(id) {
+            if (!confirm('Hapus booking #' + id + '?')) return;
+            await window.PEROT_DB.deleteBooking(id);
+            showToast('Booking #' + id + ' dihapus', 'info');
+        }
+
+        // Add sample bookings
+        async function addSampleBookings() {
+            var samples = [
+                { nama: 'Budi Santoso', wa: '08123456789', motor: 'Honda Beat 2023', layanan: 'Servis Rutin', tanggal: '2026-07-20', jam: '08:00', keluhan: '-', status: 'Menunggu' },
+                { nama: 'Siti Rahmawati', wa: '08765432100', motor: 'Yamaha Mio 2022', layanan: 'Perbaikan Rem', tanggal: '2026-07-20', jam: '10:00', keluhan: 'Rem depan bunyi', status: 'Proses' },
+                { nama: 'Ahmad Fauzi', wa: '08571234567', motor: 'Honda Vario 2024', layanan: 'Overhaul Mesin', tanggal: '2026-07-21', jam: '13:00', keluhan: 'Mesin brebet', status: 'Menunggu' },
+                { nama: 'Dewi Lestari', wa: '08119876543', motor: 'Suzuki Address 2021', layanan: 'Servis Rutin', tanggal: '2026-07-19', jam: '15:00', keluhan: '-', status: 'Selesai' }
+            ];
+            for (var i = 0; i < samples.length; i++) {
+                var s = samples[i];
+                s.createdAt = new Date().toISOString();
+                await window.PEROT_DB.saveBooking(s);
+            }
+            showToast(samples.length + ' data sample berhasil ditambahkan', 'success');
+        }
+
+        // Filter change
+        document.getElementById('bookingFilter').addEventListener('change', function() {
+            renderBookings(this.value);
+        });
+
+        // ======================== SPAREPART CRUD ========================
+        function renderSpareparts() {
+            var spareparts = sparepartsCache;
+            var tbody = document.getElementById('sparepartTable');
+            var totalEl = document.getElementById('total-spareparts');
+            var valueEl = document.getElementById('total-value');
+
+            totalEl.textContent = spareparts.length;
+            var totalValue = 0;
+            spareparts.forEach(function(s) { totalValue += (s.stok || 0) * (s.harga || 0); });
+            valueEl.textContent = 'Rp ' + totalValue.toLocaleString('id-ID');
+
+            if (spareparts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-400">Belum ada sparepart.</td></tr>';
+                return;
+            }
+
+            var html = '';
+            spareparts.forEach(function(s) {
+                var stokClass = s.stok <= 0 ? 'text-red-500 font-bold' : 'text-slate-700';
+                html += '<tr>';
+                html += '<td class="p-4 font-medium text-slate-800">' + escapeHtml(s.nama) + '</td>';
+                html += '<td class="p-4 text-slate-500">' + escapeHtml(s.kategori) + '</td>';
+                html += '<td class="p-4 text-center ' + stokClass + '">' + s.stok + '</td>';
+                html += '<td class="p-4 text-right text-slate-700">Rp ' + Number(s.harga).toLocaleString('id-ID') + '</td>';
+                html += '<td class="p-4 text-center">';
+                html += '<button onclick="deleteSparepart(\'' + s.id + '\')" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>';
+                html += '</td>';
+                html += '</tr>';
+            });
+            tbody.innerHTML = html;
+        }
+
+        async function deleteSparepart(id) {
+            if (!confirm('Hapus sparepart ini?')) return;
+            await window.PEROT_DB.deleteSparepart(id);
+            showToast('Sparepart dihapus', 'info');
+        }
+
+        // Sparepart form submit
+        document.getElementById('sparepartForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            var data = {
+                nama: document.getElementById('sparepart_name').value.trim(),
+                kategori: document.getElementById('sparepart_kategori').value.trim(),
+                stok: parseInt(document.getElementById('sparepart_stok').value) || 0,
+                harga: parseInt(document.getElementById('sparepart_harga').value) || 0,
+                deskripsi: document.getElementById('sparepart_deskripsi').value.trim()
+            };
+            await window.PEROT_DB.saveSparepart(data);
+            this.reset();
+            showToast('Sparepart "' + data.nama + '" berhasil ditambahkan', 'success');
+        });
+
+        // ======================== UTILITY ========================
+        function escapeHtml(text) {
+            if (text === null || text === undefined || text === '') return '-';
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ======================== AUTH (Firebase) ========================
+        var auth = null;
+        if (window.PEROT_DB.isFirebase() && typeof firebase !== 'undefined' && firebase.auth) {
+            auth = firebase.auth();
+        }
+
+        var mainEl = document.querySelector('.main-content');
+        var sidebarEl = document.querySelector('.sidebar');
+        var loginScreen = document.getElementById('login-screen');
+        var logoutBtn = document.getElementById('logout-btn');
+        var adminUser = document.getElementById('admin-user');
+
+        function showDashboard() {
+            if (loginScreen) loginScreen.classList.add('hidden');
+            if (mainEl) mainEl.style.display = '';
+            if (sidebarEl) sidebarEl.style.display = '';
+        }
+        function showLogin() {
+            if (loginScreen) loginScreen.classList.remove('hidden');
+            if (mainEl) mainEl.style.display = 'none';
+            if (sidebarEl) sidebarEl.style.display = 'none';
+        }
+
+        if (auth) {
+            // butuh login
+            showLogin();
+            auth.onAuthStateChanged(function (user) {
+                if (user) {
+                    adminUser.textContent = user.email;
+                    adminUser.classList.remove('hidden');
+                    logoutBtn.classList.remove('hidden');
+                    showDashboard();
+                } else {
+                    adminUser.classList.add('hidden');
+                    logoutBtn.classList.add('hidden');
+                    showLogin();
+                }
+            });
+
+            document.getElementById('login-form').addEventListener('submit', async function (e) {
+                e.preventDefault();
+                var email = document.getElementById('login-email').value.trim();
+                var password = document.getElementById('login-password').value;
+                var errEl = document.getElementById('login-error');
+                errEl.classList.add('hidden');
+                try {
+                    await auth.signInWithEmailAndPassword(email, password);
+                } catch (err) {
+                    errEl.textContent = 'Login gagal: ' + (err.message || err.code);
+                    errEl.classList.remove('hidden');
+                }
+            });
+
+            logoutBtn.addEventListener('click', function () {
+                auth.signOut();
+            });
+        } else {
+            // mode lokal: langsung tampil
+            showDashboard();
+        }
+
+        // ======================== INIT ========================
+        (function init() {
+            var filterSel = document.getElementById('bookingFilter');
+            window.PEROT_DB.listenBookings(function(list) {
+                bookingsCache = list || [];
+                renderBookings(filterSel.value);
+            });
+            window.PEROT_DB.listenSpareparts(function(list) {
+                sparepartsCache = list || [];
+                renderSpareparts();
+            });
+            var modeEl = document.getElementById('db-mode');
+            if (window.PEROT_DB.isFirebase()) {
+                modeEl.textContent = '🟢 Database (multi-device)';
+                modeEl.className = 'ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700';
+                console.log('PEROT: terhubung ke Firebase (real-time multi-device)');
+            } else {
+                modeEl.textContent = '🟡 Mode lokal (1 perangkat)';
+                modeEl.className = 'ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700';
+                console.log('PEROT: mode lokal (localStorage). Isi FIREBASE_CONFIG di db.js untuk multi-device.');
+            }
+        })();
+    </script>
+</body>
+</html>
