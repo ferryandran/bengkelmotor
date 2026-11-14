@@ -238,10 +238,6 @@
         </section>
     </main>
 
-    <!-- Firebase (opsional: isi db.js untuk multi-device) -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="db.js"></script>
     <script>
         // ======================== TOAST SYSTEM ========================
@@ -498,14 +494,18 @@
                 renderSpareparts();
             });
             var modeEl = document.getElementById('db-mode');
-            if (window.PEROT_DB.isFirebase()) {
-                modeEl.textContent = '🟢 Database (multi-device)';
+            if (window.PEROT_DB.isPhp && window.PEROT_DB.isPhp()) {
+                modeEl.textContent = '🟢 Database (PHP/MySQL)';
+                modeEl.className = 'ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700';
+                console.log('PEROT: backend PHP/MySQL aktif');
+            } else if (window.PEROT_DB.isFirebase()) {
+                modeEl.textContent = '🟢 Database (Firebase)';
                 modeEl.className = 'ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700';
                 console.log('PEROT: terhubung ke Firebase (real-time multi-device)');
             } else {
                 modeEl.textContent = '🟡 Mode lokal (1 perangkat)';
                 modeEl.className = 'ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700';
-                console.log('PEROT: mode lokal (localStorage). Isi FIREBASE_CONFIG di db.js untuk multi-device.');
+                console.log('PEROT: mode lokal (localStorage).');
             }
         })();
     </script>
